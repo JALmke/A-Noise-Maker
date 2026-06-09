@@ -574,6 +574,9 @@ input[type="range"]::-moz-range-thumb {
   max-height: 170px; overflow-y: auto;
 }
 
+/* ===== mobile export bar (hidden on desktop) ===== */
+.mobile-actions { display: none; }
+
 /* ===== responsive: stack on narrow ===== */
 @media (max-width: 720px) {
   body { overflow: auto; }
@@ -588,4 +591,23 @@ input[type="range"]::-moz-range-thumb {
     border-top: 1px solid var(--border);
   }
   .brand-sub { display: none; }
+
+  /* export buttons: single row above the image */
+  .mobile-actions {
+    display: block;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+  }
+  .mobile-actions .action-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+  }
+  .mobile-actions .btn {
+    padding: 9px 4px;
+    font-size: 11.5px;
+    gap: 5px;
+    white-space: nowrap;
+  }
+  .panel-section--export { display: none; }
 }

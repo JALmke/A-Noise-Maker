@@ -40,26 +40,44 @@ vite-app/
 ├── package.json            ← dependencies and the dev/build/preview commands
 ├── vite.config.js          ← build configuration
 ├── src/
-│   ├── main.jsx            ← entry point: mounts <App> into the page
-│   ├── App.jsx            ← the entire UI (controls, presets, export)
+│   ├── main.jsx            ← entry point: picks Desktop vs Mobile UI by device
+│   ├── App.jsx             ← DESKTOP UI (controls, presets, export)
+│   ├── MobileApp.jsx       ← MOBILE UI — "Split Studio": docked image + adaptive
+│   │                         control tray, share-to-Photos export, video fix
 │   ├── halftone-engine.js  ← the rendering math (pure functions, no React)
-│   └── styles.css          ← all styling
+│   ├── styles.css          ← desktop styling
+│   └── halftone-mobile.css ← mobile styling (scoped under .mh-root)
 └── README.md               ← this file
 ```
 
 The **engine** (`halftone-engine.js`) is plain, dependency-free JavaScript — it does
-the actual halftone screening and SVG export. The **UI** (`App.jsx`) is React and
-handles controls, file loading, and exports. Keeping them separate means you can
-add new effects in the engine without touching the interface, and vice versa.
+the actual halftone screening and SVG export, shared by both UIs.
+
+There are **two interfaces**, chosen automatically at runtime by `main.jsx`:
+
+- **Desktop** (`App.jsx`) — the side-panel layout, shown on computers.
+- **Mobile** (`MobileApp.jsx`) — the "Split Studio" layout, shown on phones and
+  touch devices: the image is docked on top, a control tray sits below and sizes
+  itself to the active category, exports use the native **share sheet** so PNGs
+  can be saved to the photo library, and video loads reliably on iOS.
+
+The switch uses a media query — `(max-width: 768px), (pointer: coarse)` — so any
+phone or tablet gets the mobile UI while desktops keep the desktop UI. Rotating or
+resizing re-evaluates live. To change where the split happens, edit `MOBILE_QUERY`
+at the top of `src/main.jsx`.
+
+The **engine** and **UI** being separate means you can add new effects in the
+engine without touching either interface, and vice versa.
 
 ---
 
 ## Adding features
 
-- **A new control** (slider, toggle, color) → edit `src/App.jsx`. The reusable
-  `Slider`, `Swatch`, `Segmented`, and `ShapeIcon` components are defined at the top.
+- **A new control** (slider, toggle, color) → add it to **both** `src/App.jsx`
+  (desktop) and `src/MobileApp.jsx` (mobile) so the two UIs stay in sync. Each file
+  defines its own reusable `Slider`, `Swatch`, `Segmented`, and `ShapeIcon` helpers.
 - **A new halftone effect or export format** → edit `src/halftone-engine.js` and
-  expose it from the `export { … }` line at the bottom.
+  expose it from the `export { … }` line at the bottom. Both UIs pick it up.
 - **A new dependency** (e.g. a GIF encoder) → `npm install <package>` then
   `import` it where you need it.
 
@@ -121,9 +139,36 @@ to update your domain's DNS. HTTPS is provisioned automatically and free.
 
 ## Putting the code on GitHub (for Option B)
 
-If you've never used Git: install [GitHub Desktop](https://desktop.github.com/), then
-**File → Add Local Repository**, point it at this `vite-app` folder, and **Publish**.
-Or from a terminal:
+You can do this entirely **in the browser** — no command line or Git app required.
+
+### In the browser (easiest)
+
+1. **Unzip the download first** so you have a real `vite-app` folder with the files
+   inside (the uploader needs the actual files, not the `.zip`).
+2. Go to **[github.com/new](https://github.com/new)**, sign in, name the repo
+   (e.g. `a-noise-maker`), and click **Create repository**.
+3. On the new repo page, click **Add file → Upload files** (or the
+   "uploading an existing file" link).
+4. Open your unzipped `vite-app` folder, select **everything inside it**
+   (including the `src` folder), and drag it onto the page. GitHub keeps the
+   folder structure.
+5. Scroll down and click **Commit changes**.
+
+Two things to watch for:
+
+- **Upload the _contents_ of `vite-app`, not the folder itself** — so `package.json`,
+  `index.html`, and the `src/` folder end up at the top level of the repo. Hosts
+  expect to find `package.json` at the root.
+- **The `.gitignore` file may be hidden** by your operating system because its name
+  starts with a dot. It isn't required for the upload to work. To include it anyway:
+  on Mac press **Cmd+Shift+.** in Finder; on Windows enable "Hidden items" in File
+  Explorer's View menu.
+
+> The browser uploader is perfect for this first upload. For frequent edits later,
+> [GitHub Desktop](https://desktop.github.com/) (also no command line) makes pushing
+> changes smoother.
+
+### With Git (if you prefer the command line)
 
 ```bash
 cd vite-app

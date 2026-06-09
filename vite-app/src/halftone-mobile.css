@@ -1,0 +1,340 @@
+/* ===========================================================================
+   A Noise Maker — mobile layout concepts
+   Self-contained styles for the MobileHalftone component. Everything is
+   scoped under .mh-root and uses CONTAINER-relative sizing (height:100%,
+   position:absolute) so the same component works full-screen on a phone
+   AND inside a phone frame on the comparison page.
+   =========================================================================== */
+
+.mh-root {
+  --bg:       #0a0a0c;
+  --bg-2:     #111114;
+  --panel:    #141418;
+  --panel-2:  #1a1a1f;
+  --border:   #26262d;
+  --border-2: #34343d;
+  --text:     #e8e8ea;
+  --text-2:   #b3b3ba;
+  --text-dim: #6e6e78;
+  --accent:   #f2f0e4;
+  --accent-blue: #00b3d9;
+  --rec:      #ff5a52;
+  --serif: 'Andada Pro', Georgia, 'Times New Roman', serif;
+  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text-2);
+  font-family: var(--serif);
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+.mh-root *, .mh-root *::before, .mh-root *::after { box-sizing: border-box; }
+
+/* ---------- top bar ---------- */
+.mh-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 48px;
+  padding: 0 12px;
+  flex: 0 0 auto;
+}
+.mh-brand { display: flex; align-items: center; gap: 9px; color: var(--accent); min-width: 0; }
+.mh-brand-mark {
+  display: inline-flex; width: 28px; height: 28px; flex: 0 0 auto;
+  align-items: center; justify-content: center;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+}
+.mh-brand-name { font-weight: 700; font-size: 12.5px; letter-spacing: 0.15em; color: var(--text); white-space: nowrap; }
+.mh-topbar-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.mh-icon-btn {
+  appearance: none; display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; padding: 0;
+  border: 1px solid var(--border-2); background: var(--panel-2); color: var(--text);
+  border-radius: 7px; cursor: pointer;
+}
+.mh-icon-btn:active { transform: translateY(1px); }
+.mh-icon-btn svg { width: 17px; height: 17px; }
+
+/* ---------- stage (image) ---------- */
+.mh-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background-color: var(--bg-2);
+  background-image:
+    linear-gradient(45deg, #0e0e12 25%, transparent 25%),
+    linear-gradient(-45deg, #0e0e12 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #0e0e12 75%),
+    linear-gradient(-45deg, transparent 75%, #0e0e12 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+}
+.mh-canvas {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto; height: auto;
+  display: block;
+  border-radius: 2px;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.55);
+}
+.mh-stage-pad { padding: 14px; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+
+/* floating video controls */
+.mh-vp {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  bottom: 14px; display: flex; align-items: center; gap: 10px;
+  padding: 6px 10px; background: color-mix(in oklch, var(--panel) 88%, transparent);
+  border: 1px solid var(--border-2); border-radius: 8px; z-index: 6;
+}
+.mh-vp-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); }
+
+/* meta readout chip */
+.mh-meta {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.03em; color: var(--text-dim);
+}
+.mh-meta .live { color: var(--accent-blue); }
+
+/* ---------- category strip (chips) ---------- */
+.mh-tabs {
+  display: flex; gap: 7px; overflow-x: auto; overflow-y: hidden;
+  padding: 9px 12px; flex: 0 0 auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.mh-tabs::-webkit-scrollbar { display: none; }
+.mh-chip {
+  appearance: none; flex: 0 0 auto;
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 13px; border-radius: 999px;
+  border: 1px solid var(--border-2); background: var(--panel-2);
+  color: var(--text-2); font-family: var(--serif); font-size: 13px; font-weight: 600;
+  white-space: nowrap; cursor: pointer; line-height: 1;
+}
+.mh-chip svg { width: 15px; height: 15px; }
+.mh-chip.on { background: var(--accent); color: #15140e; border-color: var(--accent); }
+
+/* ---------- control body ---------- */
+.mh-body { padding: 14px 14px 22px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.mh-group-title {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--text-dim); margin: 0 0 12px;
+}
+
+/* =====================================================================
+   CONTROLS (ported, scoped) — sliders, swatches, segmented, grids, btns
+   ===================================================================== */
+.mh-root .slider { display: block; margin-bottom: 16px; }
+.mh-root .slider:last-child { margin-bottom: 0; }
+.mh-root .slider-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 9px; }
+.mh-root .slider-label { font-size: 15px; color: var(--text-2); }
+.mh-root .slider-value { font-family: var(--mono); font-size: 12.5px; color: var(--text); }
+.mh-root input[type="range"] {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 5px;
+  border-radius: 999px; background: #2c2c34; outline: none; cursor: pointer;
+}
+.mh-root input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--accent); border: 3px solid var(--panel); box-shadow: 0 1px 4px rgba(0,0,0,0.5); cursor: pointer;
+}
+.mh-root input[type="range"]::-moz-range-thumb {
+  width: 22px; height: 22px; border-radius: 50%; background: var(--accent); border: 3px solid var(--panel); cursor: pointer;
+}
+
+.mh-root .swatch { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; cursor: pointer; }
+.mh-root .swatch:last-child { margin-bottom: 0; }
+.mh-root .swatch-dot {
+  position: relative; width: 30px; height: 30px; border-radius: 7px;
+  border: 1px solid var(--border-2); flex: 0 0 auto; overflow: hidden;
+}
+.mh-root .swatch-dot input[type="color"] {
+  position: absolute; inset: -4px; width: calc(100% + 8px); height: calc(100% + 8px);
+  border: 0; padding: 0; background: transparent; cursor: pointer; opacity: 0;
+}
+.mh-root .swatch-label { flex: 1 1 auto; font-size: 15px; color: var(--text-2); }
+.mh-root .swatch-hex { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 0.04em; }
+.mh-root .cmyk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; }
+.mh-root .cmyk-grid .swatch { margin-bottom: 6px; }
+
+.mh-root .segmented { display: flex; gap: 4px; background: var(--panel-2); border: 1px solid var(--border-2); border-radius: 9px; padding: 4px; }
+.mh-root .seg {
+  flex: 1 1 0; appearance: none; border: 0; background: transparent; color: var(--text-2);
+  font-family: var(--serif); font-size: 14px; font-weight: 600; padding: 10px 8px; border-radius: 6px; cursor: pointer;
+}
+.mh-root .seg-on { background: var(--accent); color: #15140e; }
+
+.mh-root .shape-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; }
+.mh-root .shape-btn {
+  appearance: none; border: 1px solid var(--border-2); background: var(--panel-2); border-radius: 8px;
+  padding: 11px 4px 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--text-dim);
+}
+.mh-root .shape-btn svg { width: 20px; height: 20px; }
+.mh-root .shape-btn span { font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.02em; text-transform: uppercase; }
+.mh-root .shape-btn.on { border-color: var(--accent); background: color-mix(in oklch, var(--accent) 9%, transparent); color: var(--text); }
+
+.mh-root .preset-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 9px; }
+.mh-root .preset-card {
+  appearance: none; border: 1px solid var(--border-2); background: var(--panel-2); border-radius: 8px;
+  padding: 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 7px;
+}
+.mh-root .preset-swatch { position: relative; width: 100%; height: 40px; border-radius: 5px; overflow: hidden; display: block; }
+.mh-root .preset-dot { position: absolute; width: 16px; height: 16px; border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+.mh-root .preset-dot-2 { transform: translate(-115%, -50%); width: 12px; height: 12px; mix-blend-mode: multiply; }
+.mh-root .preset-dot-3 { transform: translate(15%, -50%); width: 12px; height: 12px; mix-blend-mode: multiply; }
+.mh-root .preset-name { font-family: var(--mono); font-size: 10px; letter-spacing: 0.04em; color: var(--text-2); text-transform: uppercase; }
+
+.mh-root .source-tabs { display: flex; gap: 9px; }
+.mh-root .src-tab {
+  flex: 1 1 0; appearance: none; border: 1px solid var(--border-2); background: var(--panel-2); color: var(--text-2);
+  font-family: var(--serif); font-size: 14px; font-weight: 600; padding: 12px 10px; border-radius: 8px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+}
+.mh-root .src-tab.on { background: var(--accent); color: #15140e; border-color: var(--accent); }
+.mh-root .source-meta { display: flex; align-items: center; gap: 7px; margin-top: 14px; font-family: var(--mono); font-size: 11px; color: var(--text-dim); flex-wrap: wrap; }
+.mh-root .src-label { color: var(--text-2); }
+.mh-root .src-live { color: var(--accent-blue); }
+
+.mh-root .check { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 14.5px; color: var(--text-2); cursor: pointer; }
+.mh-root .check input { width: 20px; height: 20px; accent-color: var(--accent); cursor: pointer; }
+
+.mh-root .btn {
+  appearance: none; border: 1px solid var(--border-2); background: var(--panel-2); color: var(--text);
+  font-family: var(--serif); font-size: 15px; font-weight: 600; padding: 13px 12px; border-radius: 8px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; line-height: 1.1;
+}
+.mh-root .btn:active { transform: translateY(1px); }
+.mh-root .btn-primary { background: var(--accent); color: #15140e; border-color: var(--accent); }
+.mh-root .btn-accent { background: transparent; color: var(--accent); }
+.mh-root .btn-ghost { background: transparent; color: var(--text-2); }
+.mh-root .btn-record .rec-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--rec); }
+.mh-root .btn-record.on { border-color: var(--rec); color: var(--rec); background: color-mix(in oklch, var(--rec) 10%, transparent); }
+.mh-root .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.mh-export-hint {
+  margin: 14px 0 0; padding: 11px 13px;
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px; line-height: 1.5; color: var(--text-dim);
+}
+.mh-export-hint b { color: var(--text-2); font-weight: 600; }
+
+/* =====================================================================
+   LAYOUT A — Split Studio: docked image on top, fixed control tray below
+   ===================================================================== */
+.mh-a { display: flex; flex-direction: column; }
+.mh-a .mh-topbar { border-bottom: 1px solid var(--border); background: color-mix(in oklch, var(--bg) 80%, transparent); }
+.mh-a .mh-stage { flex: 1 1 auto; min-height: 0; }
+.mh-a .mh-stage .mh-stage-pad { padding: 16px; }
+.mh-a .mh-tray {
+  flex: 0 0 auto;
+  max-height: 56%;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+}
+.mh-a .mh-tabs { border-bottom: 1px solid var(--border); }
+.mh-a .mh-body { flex: 1 1 auto; min-height: 0; }
+.mh-a .mh-stage-meta {
+  position: absolute; left: 12px; bottom: 12px; z-index: 5;
+  padding: 5px 9px; border-radius: 7px;
+  background: color-mix(in oklch, var(--bg) 70%, transparent);
+  border: 1px solid var(--border-2);
+}
+
+/* =====================================================================
+   LAYOUT B — Immersive Canvas: full-bleed image, floating toolbar + sheet
+   ===================================================================== */
+.mh-b .mh-stage { position: absolute; inset: 0; }
+.mh-b .mh-stage .mh-stage-pad {
+  padding: 64px 16px 80px;
+  transition: padding-bottom 0.28s cubic-bezier(.4,0,.2,1);
+}
+.mh-b.sheet-open .mh-stage .mh-stage-pad { padding-bottom: calc(46% + 24px); }
+.mh-b .mh-topbar {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 7;
+  background: linear-gradient(to bottom, color-mix(in oklch, var(--bg) 78%, transparent), transparent);
+}
+.mh-b .mh-stage-meta {
+  position: absolute; left: 50%; transform: translateX(-50%); top: 56px; z-index: 7;
+  padding: 5px 10px; border-radius: 999px;
+  background: color-mix(in oklch, var(--bg) 60%, transparent);
+  border: 1px solid var(--border-2);
+}
+
+/* floating bottom toolbar (launcher) */
+.mh-toolbar {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 8;
+  display: flex; gap: 4px; overflow-x: auto; overflow-y: hidden;
+  padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: color-mix(in oklch, var(--panel) 92%, transparent);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border);
+  scrollbar-width: none;
+  transition: transform 0.28s cubic-bezier(.4,0,.2,1), opacity 0.2s;
+}
+.mh-toolbar::-webkit-scrollbar { display: none; }
+.mh-b.sheet-open .mh-toolbar { transform: translateY(110%); opacity: 0; pointer-events: none; }
+.mh-tool {
+  appearance: none; flex: 0 0 auto; min-width: 60px;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding: 6px 8px; border: 0; background: transparent; color: var(--text-2);
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer;
+}
+.mh-tool svg { width: 22px; height: 22px; }
+.mh-tool.accent { color: var(--accent); }
+
+/* slide-up bottom sheet */
+.mh-sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 9;
+  height: 46%; min-height: 252px;
+  display: flex; flex-direction: column;
+  background: var(--panel);
+  border-top: 1px solid var(--border-2);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -16px 40px rgba(0,0,0,0.5);
+  transform: translateY(100%);
+  transition: transform 0.28s cubic-bezier(.4,0,.2,1);
+}
+.mh-b.sheet-open .mh-sheet { transform: none; }
+.mh-sheet-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 14px 10px; flex: 0 0 auto; position: relative;
+}
+.mh-sheet-grip {
+  position: absolute; top: 7px; left: 50%; transform: translateX(-50%);
+  width: 38px; height: 4px; border-radius: 999px; background: var(--border-2);
+}
+.mh-sheet-title { font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-dim); margin-top: 4px; }
+.mh-sheet .mh-body { flex: 1 1 auto; padding-top: 4px; }
+
+/* =====================================================================
+   ABOUT overlay (shared) — covers the root, slides over everything
+   ===================================================================== */
+.mh-about {
+  position: absolute; inset: 0; z-index: 20;
+  background: var(--bg); overflow-y: auto;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.mh-about.open { opacity: 1; pointer-events: auto; }
+.mh-about-head {
+  position: sticky; top: 0; display: flex; align-items: center; justify-content: space-between;
+  padding: 14px; border-bottom: 1px solid var(--border); background: var(--bg);
+}
+.mh-about-body { padding: 22px 18px 40px; line-height: 1.66; font-size: 15px; }
+.mh-about-body h2 { font-family: var(--serif); font-size: 22px; color: var(--text); margin: 0 0 14px; line-height: 1.2; }
+.mh-about-body p { margin: 0 0 14px; color: var(--text-2); text-wrap: pretty; }
+.mh-about-body .priv strong { color: var(--text); }
+.mh-about-body .blk-title { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim); margin: 26px 0 8px; }
+.mh-about-body .credits { list-style: none; margin: 0; padding: 0; }
+.mh-about-body .credits li { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+.mh-about-body .credits b { color: var(--text-2); font-weight: 600; }
+.mh-about-body .credits i { font-style: normal; font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; color: var(--text-dim); }

@@ -1,6 +1,7 @@
 // Halftone tool — main React app.
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as Halftone from './halftone-engine.js';
+import sampleUrl from './sample-cat.jpg';
 
 // ---------- defaults / presets ----------
 const DEFAULTS = {
@@ -62,85 +63,20 @@ const PRESETS = [
 }];
 
 
-// ---------- sample procedural image ----------
-// A firecracker bursting against a night sky. Drawn with a wide tonal
-// range (near-white sparks → near-black sky) so the halftone screen has
-// plenty of dot-size variation to work with.
-function buildSampleCanvas() {
-  const W = 1200,H = 800;
-  const c = document.createElement('canvas');
-  c.width = W;c.height = H;
-  const g = c.getContext('2d');
-  drawFirework(g, W, H);
-  return c;
-}
-
-function drawFirework(g, W, H) {
-  const cx = W * 0.5,cy = H * 0.43;
-  // night sky: warm haze at the burst, fading to near-black at the edges
-  const sky = g.createRadialGradient(cx, cy, 30, cx, cy, Math.max(W, H) * 0.8);
-  sky.addColorStop(0, '#33291a');
-  sky.addColorStop(0.45, '#1b1726');
-  sky.addColorStop(1, '#241f30');
-  g.fillStyle = sky;
-  g.fillRect(0, 0, W, H);
-
-  // deterministic rng so the sample is identical every load
-  let seed = 20260606;
-  const rnd = () => {seed = seed * 1664525 + 1013904223 >>> 0;return seed / 4294967296;};
-
-  g.lineCap = 'round';
-  const maxR = Math.min(W, H) * 0.46;
-
-  fireBurst(g, rnd, cx, cy, maxR, 120, 1); // main burst
-  fireBurst(g, rnd, W * 0.18, H * 0.70, maxR * 0.34, 60, 0.7); // companion
-  fireBurst(g, rnd, W * 0.84, H * 0.62, maxR * 0.28, 52, 0.62); // companion
-
-  // faint launch trail rising into the main burst
-  const trail = g.createLinearGradient(cx, cy + maxR * 0.2, cx - 18, H);
-  trail.addColorStop(0, 'rgba(255,210,150,0.30)');
-  trail.addColorStop(1, 'rgba(255,180,110,0)');
-  g.strokeStyle = trail;
-  g.lineWidth = 5;
-  g.beginPath();g.moveTo(cx, cy + maxR * 0.2);g.lineTo(cx - 18, H);g.stroke();
-
-  // baked label — picks up Andada Pro once webfonts are ready
-  g.fillStyle = 'rgba(255,240,215,0.92)';
-  g.font = '600 40px "Andada Pro", Georgia, serif';
-  g.fillText('A NOISE MAKER', 56, H - 52);
-}
-
-function fireBurst(g, rnd, cx, cy, R, spokes, intensity) {
-  for (let i = 0; i < spokes; i++) {
-    const ang = i / spokes * Math.PI * 2 + (rnd() - 0.5) * 0.05;
-    const len = R * (0.5 + rnd() * 0.5);
-    const x2 = cx + Math.cos(ang) * len;
-    const y2 = cy + Math.sin(ang) * len;
-    const grad = g.createLinearGradient(cx, cy, x2, y2);
-    grad.addColorStop(0, `rgba(255,250,235,${0.95 * intensity})`);
-    grad.addColorStop(0.5, `rgba(255,224,168,${0.5 * intensity})`);
-    grad.addColorStop(1, 'rgba(255,176,112,0)');
-    g.strokeStyle = grad;
-    g.lineWidth = 2.4;
-    g.beginPath();
-    g.moveTo(cx + Math.cos(ang) * R * 0.04, cy + Math.sin(ang) * R * 0.04);
-    g.lineTo(x2, y2);
-    g.stroke();
-    // hot spark at the tip
-    const sr = (2.5 + rnd() * 4) * intensity;
-    const sd = g.createRadialGradient(x2, y2, 0, x2, y2, sr * 2.4);
-    sd.addColorStop(0, `rgba(255,255,248,${intensity})`);
-    sd.addColorStop(1, 'rgba(255,205,150,0)');
-    g.fillStyle = sd;
-    g.beginPath();g.arc(x2, y2, sr * 2.4, 0, Math.PI * 2);g.fill();
-  }
-  // hot core flash
-  const core = g.createRadialGradient(cx, cy, 0, cx, cy, R * 0.55);
-  core.addColorStop(0, `rgba(255,255,250,${0.95 * intensity})`);
-  core.addColorStop(0.25, `rgba(255,238,205,${0.55 * intensity})`);
-  core.addColorStop(1, 'rgba(255,198,138,0)');
-  g.fillStyle = core;
-  g.beginPath();g.arc(cx, cy, R * 0.55, 0, Math.PI * 2);g.fill();
+// ---------- sample image ----------
+// A photo bundled with the tool, shown as the default canvas so there's
+// something to screen before the user loads their own image or video.
+const SAMPLE_SRC = sampleUrl;
+function loadSampleCanvas(onReady) {
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth;
+    c.height = img.naturalHeight;
+    c.getContext('2d').drawImage(img, 0, 0);
+    onReady(c);
+  };
+  img.src = SAMPLE_SRC;
 }
 
 // ---------- color swatch input ----------
@@ -212,7 +148,7 @@ function ShapeIcon({ kind }) {
 // ---------- main app ----------
 function App() {
   const [s, setS] = useState(DEFAULTS);
-  const [sourceLabel, setSourceLabel] = useState('SAMPLE.PROC');
+  const [sourceLabel, setSourceLabel] = useState('SAMPLE.JPG');
   const [sourceKind, setSourceKind] = useState('sample'); // sample | image | video
   const [playing, setPlaying] = useState(false);
   const [meta, setMeta] = useState({ w: 0, h: 0, fps: 0 });
@@ -233,12 +169,9 @@ function App() {
   const recordStartRef = useRef(0);
   const lastUrlRef = useRef(null); // object URL of the current image/video, revoked on next load
 
-  // Build sample once (and rebuild once web fonts have loaded so the
-  // baked-in canvas text uses Andada Pro rather than a fallback face)
+  // Load the bundled sample photo into the canvas once on mount.
   useEffect(() => {
-    const build = () => {sampleRef.current = buildSampleCanvas();setSampleVer((v) => v + 1);};
-    build();
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(build);
+    loadSampleCanvas((c) => { sampleRef.current = c; setSampleVer((v) => v + 1); });
   }, []);
 
   // Update single setting
@@ -382,7 +315,7 @@ function App() {
   const useSample = useCallback(() => {
     stopVideo();
     setSourceKind('sample');
-    setSourceLabel('SAMPLE.PROC');
+    setSourceLabel('SAMPLE.JPG');
     setPlaying(false);
   }, [stopVideo]);
 
@@ -529,6 +462,21 @@ function App() {
   // ---------- UI ----------
   const showVideoControls = sourceKind === 'video';
 
+  // Export action buttons — rendered in the right panel on desktop and in a
+  // single-row bar above the image on mobile (same handlers, two mount points).
+  const renderExportActions = () => (
+    <div className="action-grid">
+      <button className="btn btn-primary" onClick={downloadPNG}>Export PNG</button>
+      <button className="btn btn-accent" onClick={downloadSVG}>Export SVG</button>
+      <button className={'btn ' + (recording ? 'btn-record on' : 'btn-record')}
+      onClick={recording ? stopRecord : startRecord}>
+        <span className="rec-dot" aria-hidden="true" />
+        <span>{recording ? `Stop · ${recordTime.toFixed(1)}s` : 'Record'}</span>
+      </button>
+      <button className="btn btn-ghost" onClick={() => setS(DEFAULTS)}>Reset</button>
+    </div>
+  );
+
   return (
     <div className="app">
       {/* Top bar */}
@@ -554,6 +502,9 @@ function App() {
         </div>
       </header>
 
+      {/* Mobile-only: export buttons in a single row above the image */}
+      <div className="mobile-actions">{renderExportActions()}</div>
+
       <div className="body">
         {/* Canvas viewport */}
         <main
@@ -578,18 +529,9 @@ function App() {
 
         {/* Controls panel */}
         <aside className="panel">
-          <div className="panel-section">
+          <div className="panel-section panel-section--export">
             <div className="panel-title">Export</div>
-            <div className="action-grid">
-              <button className="btn btn-primary" onClick={downloadPNG}>Export PNG</button>
-              <button className="btn btn-accent" onClick={downloadSVG}>Export SVG</button>
-              <button className={'btn ' + (recording ? 'btn-record on' : 'btn-record')}
-              onClick={recording ? stopRecord : startRecord}>
-                <span className="rec-dot" aria-hidden="true" />
-                <span>{recording ? `Stop · ${recordTime.toFixed(1)}s` : 'Record'}</span>
-              </button>
-              <button className="btn btn-ghost" onClick={() => setS(DEFAULTS)}>Reset</button>
-            </div>
+            {renderExportActions()}
           </div>
 
           <div className="panel-section">
