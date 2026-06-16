@@ -35,6 +35,103 @@ function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
     return count ? (sum / count) / 255 : 0;
   }
 
+  // ---------- bitmap / dither ----------
+  // Ordered-dither threshold matrices, normalised to (0..1).
+  const BAYER4 = [
+    [0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]
+  ];
+  const BAYER8 = [
+    [0, 32, 8, 40, 2, 34, 10, 42], [48, 16, 56, 24, 50, 18, 58, 26],
+    [12, 44, 4, 36, 14, 46, 6, 38], [60, 28, 52, 20, 62, 30, 54, 22],
+    [3, 35, 11, 43, 1, 33, 9, 41], [51, 19, 59, 27, 49, 17, 57, 25],
+    [15, 47, 7, 39, 13, 45, 5, 37], [63, 31, 55, 23, 61, 29, 53, 21]
+  ];
+
+  // Build a low-res luminance grid (gw x gh) from the source, with tone applied.
+  function buildLumaGrid(srcData, sw, sh, gw, gh, opts) {
+    const d = srcData.data;
+    const lum = new Float32Array(gw * gh);
+    const brightness = opts.brightness, contrast = opts.contrast;
+    for (let gy = 0; gy < gh; gy++) {
+      const sy = Math.min(sh - 1, ((gy + 0.5) / gh * sh) | 0);
+      for (let gx = 0; gx < gw; gx++) {
+        const sx = Math.min(sw - 1, ((gx + 0.5) / gw * sw) | 0);
+        const i = (sy * sw + sx) * 4;
+        let v = rgbToLuma(d[i], d[i + 1], d[i + 2]) / 255;
+        v = tone(v, brightness, contrast);
+        lum[gy * gw + gx] = v;
+      }
+    }
+    return lum;
+  }
+
+  // Dither a luma grid to a 1-bit grid. Returns Uint8Array where 1 = ink.
+  // type: 'bayer4' | 'bayer8' | 'floyd' | 'atkinson' | 'noise' | 'threshold'
+  function ditherGrid(lum, gw, gh, type, invert) {
+    const bits = new Uint8Array(gw * gh);
+    const inkBit = invert ? 0 : 1; // when inverted, light areas get inked instead
+    const litBit = invert ? 1 : 0;
+
+    if (type === 'floyd' || type === 'atkinson') {
+      // Error diffusion needs a mutable working copy.
+      const buf = Float32Array.from(lum);
+      const add = (x, y, e) => {
+        if (x < 0 || x >= gw || y < 0 || y >= gh) return;
+        buf[y * gw + x] += e;
+      };
+      for (let y = 0; y < gh; y++) {
+        for (let x = 0; x < gw; x++) {
+          const old = buf[y * gw + x];
+          const q = old < 0.5 ? 0 : 1; // 0 = dark/ink, 1 = light
+          bits[y * gw + x] = q === 0 ? inkBit : litBit;
+          const err = old - q;
+          if (type === 'floyd') {
+            add(x + 1, y, err * 7 / 16);
+            add(x - 1, y + 1, err * 3 / 16);
+            add(x, y + 1, err * 5 / 16);
+            add(x + 1, y + 1, err * 1 / 16);
+          } else { // atkinson — 1/8 to six neighbours
+            const e = err / 8;
+            add(x + 1, y, e); add(x + 2, y, e);
+            add(x - 1, y + 1, e); add(x, y + 1, e); add(x + 1, y + 1, e);
+            add(x, y + 2, e);
+          }
+        }
+      }
+      return bits;
+    }
+
+    // Per-pixel threshold methods.
+    for (let y = 0; y < gh; y++) {
+      for (let x = 0; x < gw; x++) {
+        const v = lum[y * gw + x];
+        let t;
+        if (type === 'bayer4') t = (BAYER4[y & 3][x & 3] + 0.5) / 16;
+        else if (type === 'bayer8') t = (BAYER8[y & 7][x & 7] + 0.5) / 64;
+        else if (type === 'noise') {
+          const j = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+          t = j - Math.floor(j);
+        } else t = 0.5; // plain threshold
+        bits[y * gw + x] = v < t ? inkBit : litBit;
+      }
+    }
+    return bits;
+  }
+
+  function renderBitmapGrid(dctx, srcData, sw, sh, dw, dh, opts) {
+    const px = Math.max(1, Math.round(opts.cell));
+    const gw = Math.max(1, Math.ceil(dw / px));
+    const gh = Math.max(1, Math.ceil(dh / px));
+    const lum = buildLumaGrid(srcData, sw, sh, gw, gh, opts);
+    const bits = ditherGrid(lum, gw, gh, opts.dither || 'bayer4', opts.invert);
+    dctx.fillStyle = opts.ink || '#000000';
+    for (let gy = 0; gy < gh; gy++) {
+      for (let gx = 0; gx < gw; gx++) {
+        if (bits[gy * gw + gx]) dctx.fillRect(gx * px, gy * px, px, px);
+      }
+    }
+  }
+
   // ---------- shapes ----------
   // Draws a halftone "ink" mark at (x,y) with normalized "amount" 0..1 -> 0..cell.
   // ctx fillStyle should already be set.
@@ -131,6 +228,9 @@ function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
         renderGrid(dctx, srcData, sw, sh, dw, dh, sxPerOx, syPerOy, cell,
           ch.angle, sampleRadius, opts, ch.color, ch.fn);
       }
+    } else if (opts.mode === 'bitmap') {
+      dctx.globalCompositeOperation = 'source-over';
+      renderBitmapGrid(dctx, srcData, sw, sh, dw, dh, opts);
     } else {
       // mono / duotone: same algorithm; duotone just uses chosen ink/bg.
       const ink = opts.ink || '#000000';
@@ -275,7 +375,22 @@ function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 
     let body = `<rect width="${outW}" height="${outH}" fill="${escAttr(opts.bg || '#ffffff')}"/>`;
 
-    if (opts.mode === 'cmyk') {
+    if (opts.mode === 'bitmap') {
+      const px = Math.max(1, Math.round(opts.cell));
+      const gw = Math.max(1, Math.ceil(outW / px));
+      const gh = Math.max(1, Math.ceil(outH / px));
+      const lum = buildLumaGrid(srcData, sw, sh, gw, gh, opts);
+      const bits = ditherGrid(lum, gw, gh, opts.dither || 'bayer4', opts.invert);
+      let rects = '';
+      for (let gy = 0; gy < gh; gy++) {
+        for (let gx = 0; gx < gw; gx++) {
+          if (bits[gy * gw + gx]) {
+            rects += `<rect x="${gx * px}" y="${gy * px}" width="${px}" height="${px}"/>`;
+          }
+        }
+      }
+      body += `<g fill="${escAttr(opts.ink || '#000000')}" shape-rendering="crispEdges">${rects}</g>`;
+    } else if (opts.mode === 'cmyk') {
       const channels = [
         { color: opts.inks.c, angle: 15, fn: (r,g,b)=>255-r },
         { color: opts.inks.m, angle: 75, fn: (r,g,b)=>255-g },

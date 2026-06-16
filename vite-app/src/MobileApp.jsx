@@ -56,7 +56,7 @@ function saveOrShare(file, report) {
 
 // ---------- defaults / presets ----------
 const DEFAULTS = {
-  mode: 'mono', shape: 'circle', cell: 10, angle: 45,
+  mode: 'mono', shape: 'circle', dither: 'bayer4', cell: 10, angle: 45,
   brightness: 0, contrast: 1.15, jitter: 0, invert: false,
   bg: '#f4efe4', ink: '#111111',
   inkC: '#00b3d9', inkM: '#e6007e', inkY: '#ffd400', inkK: '#0a0a0a',
@@ -69,7 +69,9 @@ const PRESETS = [
   { name: 'Riso', s: { mode: 'cmyk', shape: 'circle', cell: 12, angle: 45, brightness: 0.04, contrast: 1.05, jitter: 0.2, bg: '#fff7e6', inkC: '#1c5fbf', inkM: '#e35a8d', inkY: '#fff7e6', inkK: '#fff7e6' } },
   { name: 'Glow', s: { mode: 'duotone', shape: 'circle', cell: 8, angle: 0, brightness: -0.04, contrast: 1.25, jitter: 0, invert: true, bg: '#0a0a0c', ink: '#e8e0a8' } },
   { name: 'Engraving', s: { mode: 'mono', shape: 'line', cell: 7, angle: 30, brightness: 0, contrast: 1.35, jitter: 0, bg: '#efe9d8', ink: '#1a1a1a' } },
-  { name: 'Grid', s: { mode: 'mono', shape: 'square', cell: 12, angle: 0, brightness: 0, contrast: 1.15, jitter: 0, bg: '#ece4cf', ink: '#111111' } }
+  { name: 'Grid', s: { mode: 'mono', shape: 'square', cell: 12, angle: 0, brightness: 0, contrast: 1.15, jitter: 0, bg: '#ece4cf', ink: '#111111' } },
+  { name: 'Dither', s: { mode: 'bitmap', dither: 'bayer4', cell: 5, brightness: 0, contrast: 1.2, jitter: 0, invert: false, bg: '#efe9d8', ink: '#161616' } },
+  { name: 'Console', s: { mode: 'bitmap', dither: 'floyd', cell: 4, brightness: 0.02, contrast: 1.3, jitter: 0, invert: true, bg: '#0f1410', ink: '#9bbc0f' } }
 ];
 
 // ---------- sample image ----------
@@ -128,6 +130,18 @@ function ShapeIcon({ kind }) {
     case 'diamond': return <svg viewBox="0 0 16 16"><polygon points="8,2 14,8 8,14 2,8" fill={c} /></svg>;
     case 'line': return <svg viewBox="0 0 16 16"><rect x="1" y="6" width="14" height="4" fill={c} /></svg>;
     case 'cross': return <svg viewBox="0 0 16 16"><rect x="2" y="6.5" width="12" height="3" fill={c} /><rect x="6.5" y="2" width="3" height="12" fill={c} /></svg>;
+    default: return null;
+  }
+}
+function DitherIcon({ kind }) {
+  const c = '#cfcfd4';
+  const r = (x, y, w = 2, h = 2) => <rect key={x + '-' + y} x={x} y={y} width={w} height={h} fill={c} />;
+  switch (kind) {
+    case 'bayer4': return <svg viewBox="0 0 16 16">{[0, 4, 8, 12].flatMap((y, j) => [0, 4, 8, 12].filter((x, i) => (i + j) % 2 === 0).map((x) => r(x, y)))}</svg>;
+    case 'bayer8': return <svg viewBox="0 0 16 16">{[0, 3, 6, 9, 12].flatMap((y, j) => [0, 3, 6, 9, 12].filter((x, i) => (i + j) % 2 === 0).map((x) => r(x, y, 1.6, 1.6)))}</svg>;
+    case 'floyd': return <svg viewBox="0 0 16 16">{[[1, 1], [5, 2], [11, 1], [3, 5], [8, 4], [13, 6], [2, 9], [7, 8], [10, 10], [14, 11], [4, 12], [12, 14]].map(([x, y]) => r(x, y, 1.7, 1.7))}</svg>;
+    case 'atkinson': return <svg viewBox="0 0 16 16">{[[2, 2], [9, 3], [13, 5], [5, 7], [11, 9], [3, 11], [8, 13]].map(([x, y]) => r(x, y, 1.7, 1.7))}</svg>;
+    case 'noise': return <svg viewBox="0 0 16 16">{[[1, 2], [4, 1], [7, 3], [10, 1], [13, 4], [2, 6], [6, 7], [12, 6], [9, 9], [3, 10], [14, 11], [7, 12], [11, 13], [1, 13]].map(([x, y]) => r(x, y, 1.5, 1.5))}</svg>;
     default: return null;
   }
 }
@@ -235,7 +249,7 @@ function MobileHalftone({ layout = 'a' }) {
     if (out.width !== sz.w) out.width = sz.w;
     if (out.height !== sz.h) out.height = sz.h;
     Halftone.renderHalftone(working, out, {
-      mode: s.mode, shape: s.shape, cell: s.cell, angle: s.angle,
+      mode: s.mode, shape: s.shape, dither: s.dither, cell: s.cell, angle: s.angle,
       brightness: s.brightness, contrast: s.contrast, jitter: s.jitter, invert: s.invert,
       bg: s.bg, ink: s.ink, inks: { c: s.inkC, m: s.inkM, y: s.inkY, k: s.inkK }
     });
@@ -371,7 +385,7 @@ function MobileHalftone({ layout = 'a' }) {
     const out = outRef.current, working = workingRef.current;
     if (!out || !working || !working.width) return;
     const svg = Halftone.renderHalftoneSVG(working, out.width, out.height, {
-      mode: s.mode, shape: s.shape, cell: s.cell, angle: s.angle,
+      mode: s.mode, shape: s.shape, dither: s.dither, cell: s.cell, angle: s.angle,
       brightness: s.brightness, contrast: s.contrast, jitter: s.jitter, invert: s.invert,
       bg: s.bg, ink: s.ink, inks: { c: s.inkC, m: s.inkM, y: s.inkY, k: s.inkK }
     });
@@ -447,8 +461,15 @@ function MobileHalftone({ layout = 'a' }) {
         </div>);
       case 'mode': return (
         <Segmented value={s.mode} onChange={(v) => set('mode', v)}
-          options={[{ value: 'mono', label: 'Mono' }, { value: 'duotone', label: 'Duotone' }, { value: 'cmyk', label: 'CMYK' }]} />);
+          options={[{ value: 'mono', label: 'Mono' }, { value: 'duotone', label: 'Duotone' }, { value: 'cmyk', label: 'CMYK' }, { value: 'bitmap', label: 'Bitmap' }]} />);
       case 'shape': return (
+        s.mode === 'bitmap' ?
+        <div className="shape-grid">
+          {[['bayer4', 'order'], ['bayer8', 'fine'], ['floyd', 'floyd'], ['atkinson', 'atkin'], ['noise', 'noise']].map(([k, lbl]) =>
+            <button key={k} className={'shape-btn ' + (s.dither === k ? 'on' : '')} onClick={() => set('dither', k)}>
+              <DitherIcon kind={k} /><span>{lbl}</span>
+            </button>)}
+        </div> :
         <div className="shape-grid">
           {['circle', 'square', 'diamond', 'line', 'cross'].map((k) =>
             <button key={k} className={'shape-btn ' + (s.shape === k ? 'on' : '')} onClick={() => set('shape', k)}>
@@ -457,9 +478,9 @@ function MobileHalftone({ layout = 'a' }) {
         </div>);
       case 'geometry': return (
         <div>
-          <Slider label="Cell size" value={s.cell} min={3} max={36} step={1} onChange={(v) => set('cell', v)} format={(v) => v + ' px'} />
-          {s.mode !== 'cmyk' && <Slider label="Angle" value={s.angle} min={0} max={90} step={1} onChange={(v) => set('angle', v)} format={(v) => v + '°'} />}
-          <Slider label="Jitter" value={s.jitter} min={0} max={1} step={0.01} onChange={(v) => set('jitter', v)} format={(v) => v.toFixed(2)} />
+          <Slider label={s.mode === 'bitmap' ? 'Pixel size' : 'Cell size'} value={s.cell} min={s.mode === 'bitmap' ? 2 : 3} max={36} step={1} onChange={(v) => set('cell', v)} format={(v) => v + ' px'} />
+          {s.mode !== 'cmyk' && s.mode !== 'bitmap' && <Slider label="Angle" value={s.angle} min={0} max={90} step={1} onChange={(v) => set('angle', v)} format={(v) => v + '°'} />}
+          {s.mode !== 'bitmap' && <Slider label="Jitter" value={s.jitter} min={0} max={1} step={0.01} onChange={(v) => set('jitter', v)} format={(v) => v.toFixed(2)} />}
         </div>);
       case 'tone': return (
         <div>
@@ -591,7 +612,7 @@ function MobileHalftone({ layout = 'a' }) {
           <div className="mh-tabs" role="tablist">
             {GROUPS.map((g) =>
               <button key={g.id} className={'mh-chip ' + (tab === g.id ? 'on' : '')} onClick={() => setTab(g.id)}>
-                <CatIcon id={g.id} /><span>{g.label}</span>
+                <CatIcon id={g.id} /><span>{g.id === 'shape' && s.mode === 'bitmap' ? 'Dither' : g.label}</span>
               </button>)}
           </div>
           <div className="mh-body">{groupBody(tab)}</div>
@@ -616,7 +637,7 @@ function MobileHalftone({ layout = 'a' }) {
       <nav className="mh-toolbar">
         {GROUPS.map((g) =>
           <button key={g.id} className={'mh-tool ' + (g.id === 'export' ? 'accent' : '')} onClick={() => setSheet(g.id)}>
-            <CatIcon id={g.id} /><span>{g.label}</span>
+            <CatIcon id={g.id} /><span>{g.id === 'shape' && s.mode === 'bitmap' ? 'Dither' : g.label}</span>
           </button>)}
       </nav>
 

@@ -5,8 +5,9 @@ import sampleUrl from './sample-cat.jpg';
 
 // ---------- defaults / presets ----------
 const DEFAULTS = {
-  mode: 'mono', // mono | duotone | cmyk
+  mode: 'mono', // mono | duotone | cmyk | bitmap
   shape: 'circle', // circle | square | diamond | line | cross
+  dither: 'bayer4', // bayer4 | bayer8 | floyd | atkinson | noise (bitmap mode)
   cell: 10, // px in output space
   angle: 45,
   brightness: 0,
@@ -60,6 +61,18 @@ const PRESETS = [
   s: { mode: 'mono', shape: 'square', cell: 12, angle: 0,
     brightness: 0, contrast: 1.15, jitter: 0,
     bg: '#ece4cf', ink: '#111111' }
+},
+{
+  name: 'Dither',
+  s: { mode: 'bitmap', dither: 'bayer4', cell: 5,
+    brightness: 0, contrast: 1.2, jitter: 0, invert: false,
+    bg: '#efe9d8', ink: '#161616' }
+},
+{
+  name: 'Console',
+  s: { mode: 'bitmap', dither: 'floyd', cell: 4,
+    brightness: 0.02, contrast: 1.3, jitter: 0, invert: true,
+    bg: '#0f1410', ink: '#9bbc0f' }
 }];
 
 
@@ -145,6 +158,33 @@ function ShapeIcon({ kind }) {
   }
 }
 
+// ---------- dither icon (small svg) ----------
+function DitherIcon({ kind }) {
+  const c = '#cfcfd4';
+  const r = (x, y, w = 2, h = 2) => <rect key={x + '-' + y} x={x} y={y} width={w} height={h} fill={c} />;
+  switch (kind) {
+    case 'bayer4': // ordered 50% checker
+      return <svg viewBox="0 0 16 16">{[0, 4, 8, 12].flatMap((y, j) =>
+        [0, 4, 8, 12].filter((x, i) => (i + j) % 2 === 0).map((x) => r(x, y)))}</svg>;
+    case 'bayer8': // fine checker
+      return <svg viewBox="0 0 16 16">{[0, 3, 6, 9, 12].flatMap((y, j) =>
+        [0, 3, 6, 9, 12].filter((x, i) => (i + j) % 2 === 0).map((x) => r(x, y, 1.6, 1.6)))}</svg>;
+    case 'floyd': // diffusion — graded scatter
+      return <svg viewBox="0 0 16 16">{
+        [[1, 1], [5, 2], [11, 1], [3, 5], [8, 4], [13, 6], [2, 9], [7, 8], [10, 10], [14, 11], [4, 12], [12, 14]]
+          .map(([x, y]) => r(x, y, 1.7, 1.7))}</svg>;
+    case 'atkinson': // sparser scatter
+      return <svg viewBox="0 0 16 16">{
+        [[2, 2], [9, 3], [13, 5], [5, 7], [11, 9], [3, 11], [8, 13]]
+          .map(([x, y]) => r(x, y, 1.7, 1.7))}</svg>;
+    case 'noise': // random grain
+      return <svg viewBox="0 0 16 16">{
+        [[1, 2], [4, 1], [7, 3], [10, 1], [13, 4], [2, 6], [6, 7], [12, 6], [9, 9], [3, 10], [14, 11], [7, 12], [11, 13], [1, 13]]
+          .map(([x, y]) => r(x, y, 1.5, 1.5))}</svg>;
+    default:return null;
+  }
+}
+
 // ---------- main app ----------
 function App() {
   const [s, setS] = useState(DEFAULTS);
@@ -218,6 +258,7 @@ function App() {
     const opts = {
       mode: s.mode,
       shape: s.shape,
+      dither: s.dither,
       cell: s.cell,
       angle: s.angle,
       brightness: s.brightness,
@@ -353,7 +394,7 @@ function App() {
     const working = workingRef.current;
     if (!out || !working || !working.width) return;
     const opts = {
-      mode: s.mode, shape: s.shape, cell: s.cell, angle: s.angle,
+      mode: s.mode, shape: s.shape, dither: s.dither, cell: s.cell, angle: s.angle,
       brightness: s.brightness, contrast: s.contrast, jitter: s.jitter,
       invert: s.invert, bg: s.bg, ink: s.ink,
       inks: { c: s.inkC, m: s.inkM, y: s.inkY, k: s.inkK }
@@ -589,13 +630,31 @@ function App() {
               options={[
               { value: 'mono', label: 'Mono' },
               { value: 'duotone', label: 'Duotone' },
-              { value: 'cmyk', label: 'CMYK' }]
+              { value: 'cmyk', label: 'CMYK' },
+              { value: 'bitmap', label: 'Bitmap' }]
               } />
             
           </div>
 
           <div className="panel-section">
-            <div className="panel-title">Shape</div>
+            <div className="panel-title">{s.mode === 'bitmap' ? 'Dither' : 'Shape'}</div>
+            {s.mode === 'bitmap' ?
+            <div className="shape-grid">
+              {[
+              ['bayer4', 'order'],
+              ['bayer8', 'fine'],
+              ['floyd', 'floyd'],
+              ['atkinson', 'atkin'],
+              ['noise', 'noise']].map(([k, lbl]) =>
+              <button key={k}
+              className={'shape-btn ' + (s.dither === k ? 'on' : '')}
+              onClick={() => set('dither', k)}
+              title={k}>
+                  <DitherIcon kind={k} />
+                  <span>{lbl}</span>
+                </button>
+              )}
+            </div> :
             <div className="shape-grid">
               {['circle', 'square', 'diamond', 'line', 'cross'].map((k) =>
               <button key={k}
@@ -607,18 +666,21 @@ function App() {
                 </button>
               )}
             </div>
+            }
           </div>
 
           <div className="panel-section">
             <div className="panel-title">Geometry</div>
-            <Slider label="Cell size" value={s.cell} min={3} max={36} step={1}
+            <Slider label={s.mode === 'bitmap' ? 'Pixel size' : 'Cell size'} value={s.cell} min={s.mode === 'bitmap' ? 2 : 3} max={36} step={1}
             onChange={(v) => set('cell', v)} format={(v) => v + ' px'} />
-            {s.mode !== 'cmyk' &&
+            {s.mode !== 'cmyk' && s.mode !== 'bitmap' &&
             <Slider label="Angle" value={s.angle} min={0} max={90} step={1}
             onChange={(v) => set('angle', v)} format={(v) => v + '°'} />
             }
+            {s.mode !== 'bitmap' &&
             <Slider label="Jitter" value={s.jitter} min={0} max={1} step={0.01}
             onChange={(v) => set('jitter', v)} format={(v) => v.toFixed(2)} />
+            }
           </div>
 
           <div className="panel-section">

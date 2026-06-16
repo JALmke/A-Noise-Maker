@@ -1,7 +1,8 @@
 # A Noise Maker
 
 A browser-based **halftone texture tool**. Add an image or video, screen it into
-halftone dots (mono, duotone, or CMYK), and export the result as a **PNG**, **SVG**,
+halftone dots (mono, duotone, or CMYK) or a 1-bit **bitmap dither** (ordered, Floyd–Steinberg,
+Atkinson, noise), and export the result as a **PNG**, **SVG**,
 or a recorded **WebM**. Everything runs locally in the browser — nothing is uploaded,
 there are no servers, no tracking, and no accounts.
 
@@ -77,7 +78,9 @@ engine without touching either interface, and vice versa.
   (desktop) and `src/MobileApp.jsx` (mobile) so the two UIs stay in sync. Each file
   defines its own reusable `Slider`, `Swatch`, `Segmented`, and `ShapeIcon` helpers.
 - **A new halftone effect or export format** → edit `src/halftone-engine.js` and
-  expose it from the `export { … }` line at the bottom. Both UIs pick it up.
+  expose it from the `export { … }` line at the bottom. Both UIs pick it up. (The
+  **Bitmap** mode is a worked example: a dither stage in the engine plus a `Bitmap`
+  option and dither picker added to both `App.jsx` and `MobileApp.jsx`.)
 - **A new dependency** (e.g. a GIF encoder) → `npm install <package>` then
   `import` it where you need it.
 
