@@ -222,7 +222,10 @@ function MobileHalftone({ layout = 'a' }) {
 
   const getSource = useCallback(() => {
     if (sourceKind === 'image' && imageRef.current) return imageRef.current;
-    if (sourceKind === 'video' && videoRef.current && videoRef.current.readyState >= 2) return videoRef.current;
+    // In video mode, ALWAYS return the video element if it exists — never fall
+    // back to the sample. On loop the browser briefly drops readyState below 2
+    // while seeking to 0; gating here flashed the sample image for a frame.
+    if (sourceKind === 'video' && videoRef.current) return videoRef.current;
     return sampleRef.current;
   }, [sourceKind]);
 
@@ -240,6 +243,9 @@ function MobileHalftone({ layout = 'a' }) {
   const renderOnce = useCallback(() => {
     const src = getSource();
     if (!src) return;
+    // A video mid-seek (e.g. looping back to the start) isn't ready to draw;
+    // hold the previous frame rather than drawing a blank or the sample.
+    if (sourceKind === 'video' && src.readyState < 2) return;
     const working = workingRef.current, out = outRef.current;
     if (!working || !out) return;
     const got = Halftone.prepareSource(src, working, 900);
@@ -263,7 +269,7 @@ function MobileHalftone({ layout = 'a' }) {
     } else {
       setMeta((m) => m.w === sz.w && m.h === sz.h ? m : { ...m, w: sz.w, h: sz.h });
     }
-  }, [s, getSource, sizeOutput]);
+  }, [s, sourceKind, getSource, sizeOutput]);
 
   useEffect(() => {
     if (playing) return;
